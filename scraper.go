@@ -28,6 +28,7 @@ type Config struct {
 	Debug               bool
 }
 
+// DefaultConfig defines default config with sane defaults for most use cases.
 func DefaultConfig() Config {
 	// nolint:gomnd // allow for default config
 	return Config{
@@ -41,7 +42,7 @@ func DefaultConfig() Config {
 	}
 }
 
-// Initiate new scraper.
+// New initiates new scraper entity.
 func New(cfg Config) *Scraper {
 	// Initiate colly
 	c := colly.NewCollector()

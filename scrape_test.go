@@ -9,7 +9,10 @@ import (
 func TestScrape(t *testing.T) {
 	t.Parallel()
 
-	s := emailscraper.New(emailscraper.DefaultConfig())
+	cfg := emailscraper.DefaultConfig()
+	cfg.Debug = true
+
+	s := emailscraper.New(cfg)
 
 	emails, err := s.Scrape("https://lawzava.com")
 	if err != nil {
