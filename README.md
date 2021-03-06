@@ -6,7 +6,9 @@
 
 # emailscraper
 
-Minimalistic library to scrape emails from websites
+Minimalistic library to scrape emails from websites.
+
+Requires chromium or google-chrome available in environment for JS render utilization. 
 
 ## Installation
 
