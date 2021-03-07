@@ -29,9 +29,11 @@ func TestScrape(t *testing.T) {
 		}
 
 		var contains bool
+
 		for _, email := range emails {
 			if email == testCase.mustContainEmail {
 				contains = true
+
 				break
 			}
 		}
