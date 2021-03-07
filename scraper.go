@@ -32,7 +32,7 @@ type Config struct {
 func DefaultConfig() Config {
 	// nolint:gomnd // allow for default config
 	return Config{
-		MaxDepth:            5,
+		MaxDepth:            3,
 		Timeout:             5,
 		Recursively:         true,
 		Async:               true,
@@ -45,7 +45,9 @@ func DefaultConfig() Config {
 // New initiates new scraper entity.
 func New(cfg Config) *Scraper {
 	// Initiate colly
-	c := colly.NewCollector()
+	c := colly.NewCollector(
+		colly.UserAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"),
+	)
 
 	c.Async = cfg.Async
 	c.MaxDepth = cfg.MaxDepth

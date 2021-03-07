@@ -6,7 +6,7 @@ import (
 
 // Scrape is responsible for main scraping logic.
 func (s *Scraper) Scrape(url string) ([]string, error) {
-	url = getWebsite(trimProtocol(url), true)
+	url = getWebsite(url, true)
 	e := emails{}
 
 	c := s.collector
@@ -32,7 +32,7 @@ func (s *Scraper) Scrape(url string) ([]string, error) {
 
 	// Start the scrape
 	if err := c.Visit(url); err != nil {
-		s.log("error while visiting: ", err.Error())
+		s.log("error while visiting secure domain: ", url, err.Error())
 	}
 
 	c.Wait() // Wait for concurrent scrapes to finish
@@ -40,7 +40,7 @@ func (s *Scraper) Scrape(url string) ([]string, error) {
 	if e.emails == nil || len(e.emails) == 0 {
 		// Start the scrape on insecure url
 		if err := c.Visit(getWebsite(url, false)); err != nil {
-			s.log("error while visiting: ", err.Error())
+			s.log("error while visiting insecure domain: ", err.Error())
 		}
 
 		c.Wait() // Wait for concurrent scrapes to finish
@@ -50,6 +50,8 @@ func (s *Scraper) Scrape(url string) ([]string, error) {
 }
 
 func getWebsite(url string, secure bool) string {
+	url = trimProtocol(url)
+
 	if secure {
 		return "https://" + url
 	}
