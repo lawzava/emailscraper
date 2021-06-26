@@ -7,7 +7,8 @@ import (
 // Scrape is responsible for main scraping logic.
 func (s *Scraper) Scrape(url string) ([]string, error) {
 	url = getWebsite(url, true)
-	e := emails{}
+
+	var e emails
 
 	c := s.collector
 

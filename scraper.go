@@ -3,10 +3,10 @@ package emailscraper
 import (
 	"errors"
 	"log"
-
-	"github.com/gocolly/colly/debug"
+	"os"
 
 	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/debug"
 )
 
 // Scraper config.
@@ -54,7 +54,11 @@ func New(cfg Config) *Scraper {
 	c.MaxDepth = cfg.MaxDepth
 
 	if cfg.Debug {
-		c.SetDebugger(&debug.LogDebugger{})
+		c.SetDebugger(&debug.LogDebugger{
+			Output: os.Stderr,
+			Prefix: "",
+			Flag:   log.LstdFlags,
+		})
 	}
 
 	s := Scraper{
