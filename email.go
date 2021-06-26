@@ -23,6 +23,7 @@ func (s *emails) add(email string) {
 	// check for already existing emails
 	s.m.Lock()
 	defer s.m.Unlock()
+
 	for _, existingEmail := range s.emails {
 		if existingEmail == email {
 			return
