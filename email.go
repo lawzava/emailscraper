@@ -21,15 +21,15 @@ func (s *emails) add(email string) {
 	}
 
 	// check for already existing emails
+	s.m.Lock()
+	defer s.m.Unlock()
 	for _, existingEmail := range s.emails {
 		if existingEmail == email {
 			return
 		}
 	}
 
-	s.m.Lock()
 	s.emails = append(s.emails, email)
-	s.m.Unlock()
 }
 
 // Initialize once.
