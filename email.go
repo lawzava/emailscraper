@@ -57,9 +57,9 @@ func (s *emails) parseCloudflareEmail(cloudflareEncodedEmail string) {
 	s.add(email)
 }
 
-// nolint:gomnd // hardcoded byte values
+//nolint:gomnd // hardcoded byte values
 func decodeCloudflareEmail(email string) string {
-	var e bytes.Buffer
+	var buffer bytes.Buffer
 
 	r, _ := strconv.ParseInt(email[0:2], 16, 0)
 
@@ -67,10 +67,10 @@ func decodeCloudflareEmail(email string) string {
 		i, _ := strconv.ParseInt(email[n-2:n], 16, 0)
 		c := i ^ r
 
-		e.WriteRune(rune(c))
+		buffer.WriteRune(rune(c))
 	}
 
-	return e.String()
+	return buffer.String()
 }
 
 // Check if email looks valid.
@@ -81,14 +81,14 @@ func isValidEmail(email string) bool {
 
 	split := strings.Split(email, ".")
 
-	// nolint:gomnd // allow magic number here
+	//nolint:gomnd // allow magic number here
 	if len(split) < 2 {
 		return false
 	}
 
 	ending := split[len(split)-1]
 
-	// nolint:gomnd // allow magic number here
+	//nolint:gomnd // allow magic number here
 	if len(ending) < 2 {
 		return false
 	}

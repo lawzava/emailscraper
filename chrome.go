@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 )
 
 func initiateScrapingFromChrome(response *colly.Response, timeout int) error {
 	opts := []chromedp.ExecAllocatorOption{
-		// nolint:lll // allow longer line here
+		//nolint:lll // allow longer line here
 		chromedp.UserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3830.0 Safari/537.36"),
-		// nolint:gomnd // allow magic number here
+		//nolint:gomnd // allow magic number here
 		chromedp.WindowSize(1920, 1080),
 		chromedp.NoFirstRun,
 		chromedp.Headless,

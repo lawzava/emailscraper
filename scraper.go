@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/gocolly/colly"
-	"github.com/gocolly/colly/debug"
+	"github.com/gocolly/colly/v2"
+	"github.com/gocolly/colly/v2/debug"
 )
 
 // Scraper config.
@@ -30,7 +30,7 @@ type Config struct {
 
 // DefaultConfig defines default config with sane defaults for most use cases.
 func DefaultConfig() Config {
-	// nolint:gomnd // allow for default config
+	//nolint:gomnd // allow for default config
 	return Config{
 		MaxDepth:            3,
 		Timeout:             5,
@@ -45,31 +45,31 @@ func DefaultConfig() Config {
 // New initiates new scraper entity.
 func New(cfg Config) *Scraper {
 	// Initiate colly
-	c := colly.NewCollector(
-		// nolint:lll // allow long line for user agent
+	collector := colly.NewCollector(
+		//nolint:lll // allow long line for user agent
 		colly.UserAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"),
 	)
 
-	c.Async = cfg.Async
-	c.MaxDepth = cfg.MaxDepth
+	collector.Async = cfg.Async
+	collector.MaxDepth = cfg.MaxDepth
 
 	if cfg.Debug {
-		c.SetDebugger(&debug.LogDebugger{
+		collector.SetDebugger(&debug.LogDebugger{
 			Output: os.Stderr,
 			Prefix: "",
 			Flag:   log.LstdFlags,
 		})
 	}
 
-	s := Scraper{
+	scraper := Scraper{
 		cfg:       cfg,
-		collector: c,
+		collector: collector,
 	}
 
 	if cfg.EnableJavascript {
-		s.collector.OnResponse(func(response *colly.Response) {
+		scraper.collector.OnResponse(func(response *colly.Response) {
 			if err := initiateScrapingFromChrome(response, cfg.Timeout); err != nil {
-				s.log(err)
+				scraper.log(err)
 
 				return
 			}
@@ -78,18 +78,18 @@ func New(cfg Config) *Scraper {
 
 	if cfg.Recursively {
 		// Find and visit all links
-		s.collector.OnHTML("a[href]", func(el *colly.HTMLElement) {
-			s.log("visiting: ", el.Attr("href"))
+		scraper.collector.OnHTML("a[href]", func(el *colly.HTMLElement) {
+			scraper.log("visiting: ", el.Attr("href"))
 			if err := el.Request.Visit(el.Attr("href")); err != nil {
 				// Ignore already visited error, this appears too often
 				if !errors.Is(err, colly.ErrAlreadyVisited) {
-					s.log("error while linking: ", err.Error())
+					scraper.log("error while linking: ", err.Error())
 				}
 			}
 		})
 	}
 
-	return &s
+	return &scraper
 }
 
 func (s *Scraper) log(v ...interface{}) {
