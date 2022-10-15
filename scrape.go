@@ -1,16 +1,16 @@
 package emailscraper
 
 import (
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 )
 
 // Scrape is responsible for main scraping logic.
 func (s *Scraper) Scrape(url string) ([]string, error) {
 	url = getWebsite(url, true)
 
-	var e emails
+	var emailsSet emails
 
-	c := s.collector
+	collector := s.collector
 
 	if !s.cfg.FollowExternalLinks {
 		allowedDomains, err := prepareAllowedDomain(url)
@@ -18,36 +18,36 @@ func (s *Scraper) Scrape(url string) ([]string, error) {
 			return nil, err
 		}
 
-		c.AllowedDomains = allowedDomains
+		collector.AllowedDomains = allowedDomains
 	}
 
 	// Parse emails on each downloaded page
-	c.OnScraped(func(response *colly.Response) {
-		e.parseEmails(response.Body)
+	collector.OnScraped(func(response *colly.Response) {
+		emailsSet.parseEmails(response.Body)
 	})
 
 	// cloudflare encoded email support
-	c.OnHTML("span[data-cfemail]", func(el *colly.HTMLElement) {
-		e.parseCloudflareEmail(el.Attr("data-cfemail"))
+	collector.OnHTML("span[data-cfemail]", func(el *colly.HTMLElement) {
+		emailsSet.parseCloudflareEmail(el.Attr("data-cfemail"))
 	})
 
 	// Start the scrape
-	if err := c.Visit(url); err != nil {
+	if err := collector.Visit(url); err != nil {
 		s.log("error while visiting secure domain: ", url, err.Error())
 	}
 
-	c.Wait() // Wait for concurrent scrapes to finish
+	collector.Wait() // Wait for concurrent scrapes to finish
 
-	if e.emails == nil || len(e.emails) == 0 {
+	if emailsSet.emails == nil || len(emailsSet.emails) == 0 {
 		// Start the scrape on insecure url
-		if err := c.Visit(getWebsite(url, false)); err != nil {
+		if err := collector.Visit(getWebsite(url, false)); err != nil {
 			s.log("error while visiting insecure domain: ", err.Error())
 		}
 
-		c.Wait() // Wait for concurrent scrapes to finish
+		collector.Wait() // Wait for concurrent scrapes to finish
 	}
 
-	return e.emails, nil
+	return emailsSet.emails, nil
 }
 
 func getWebsite(url string, secure bool) string {

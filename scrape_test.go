@@ -12,7 +12,7 @@ func TestScrape(t *testing.T) {
 	cfg := emailscraper.DefaultConfig()
 	cfg.Debug = true
 
-	s := emailscraper.New(cfg)
+	scraper := emailscraper.New(cfg)
 
 	testCases := []struct {
 		name             string
@@ -23,7 +23,7 @@ func TestScrape(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		emails, err := s.Scrape(testCase.url)
+		emails, err := scraper.Scrape(testCase.url)
 		if err != nil {
 			t.Fatal(err)
 		}
