@@ -57,7 +57,6 @@ func (s *emails) parseCloudflareEmail(cloudflareEncodedEmail string) {
 	s.add(email)
 }
 
-//nolint:gomnd // hardcoded byte values
 func decodeCloudflareEmail(email string) string {
 	var buffer bytes.Buffer
 

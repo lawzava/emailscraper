@@ -19,7 +19,7 @@ func TestScrape(t *testing.T) {
 		url              string
 		mustContainEmail string
 	}{
-		{"cloudflare protected", "https://lawzava.com/contact/", "law@zava.dev"},
+		{"cloudflare protected", "https://lawzava.com/contact/", "contact@lawzava.com"},
 	}
 
 	for _, testCase := range testCases {
