@@ -11,6 +11,7 @@ func TestScrape(t *testing.T) {
 
 	cfg := emailscraper.DefaultConfig()
 	cfg.Debug = true
+	cfg.MaxDepth = 1
 
 	scraper := emailscraper.New(cfg)
 
