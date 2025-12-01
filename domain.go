@@ -20,10 +20,6 @@ func prepareAllowedDomain(requestURL string) ([]string, error) {
 	return []string{
 		domain,
 		"www." + domain,
-		"http://" + domain,
-		"https://" + domain,
-		"http://www." + domain,
-		"https://www." + domain,
 	}, nil
 }
 

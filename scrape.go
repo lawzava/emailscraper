@@ -1,16 +1,21 @@
 package emailscraper
 
 import (
-	"github.com/gocolly/colly/v2"
+	"context"
+	"fmt"
 )
 
 // Scrape is responsible for main scraping logic.
 func (s *Scraper) Scrape(url string) ([]string, error) {
+	return s.ScrapeWithContext(context.Background(), url)
+}
+
+// ScrapeWithContext is responsible for main scraping logic with context support.
+func (s *Scraper) ScrapeWithContext(ctx context.Context, url string) ([]string, error) {
 	url = getWebsite(url, true)
 
-	var emailsSet emails
-
-	collector := s.collector
+	// Reset emails set for new scrape
+	s.emailsSet.reset()
 
 	if !s.cfg.FollowExternalLinks {
 		allowedDomains, err := prepareAllowedDomain(url)
@@ -18,36 +23,40 @@ func (s *Scraper) Scrape(url string) ([]string, error) {
 			return nil, err
 		}
 
-		collector.AllowedDomains = allowedDomains
+		s.collector.AllowedDomains = allowedDomains
 	}
 
-	// Parse emails on each downloaded page
-	collector.OnScraped(func(response *colly.Response) {
-		emailsSet.parseEmails(response.Body)
-	})
+	// Channel to signal completion
+	done := make(chan struct{})
 
-	// cloudflare encoded email support
-	collector.OnHTML("span[data-cfemail]", func(el *colly.HTMLElement) {
-		emailsSet.parseCloudflareEmail(el.Attr("data-cfemail"))
-	})
-
-	// Start the scrape
-	if err := collector.Visit(url); err != nil {
-		s.log("error while visiting secure domain: ", url, err.Error())
-	}
-
-	collector.Wait() // Wait for concurrent scrapes to finish
-
-	if emailsSet.emails == nil || len(emailsSet.emails) == 0 {
-		// Start the scrape on insecure url
-		if err := collector.Visit(getWebsite(url, false)); err != nil {
-			s.log("error while visiting insecure domain: ", err.Error())
+	go func() {
+		// Start the scrape
+		err := s.collector.Visit(url)
+		if err != nil {
+			s.log("error while visiting secure domain: ", url, err.Error())
 		}
 
-		collector.Wait() // Wait for concurrent scrapes to finish
-	}
+		s.collector.Wait() // Wait for concurrent scrapes to finish
 
-	return emailsSet.emails, nil
+		if len(s.emailsSet.toSlice()) == 0 {
+			// Start the scrape on insecure url
+			err := s.collector.Visit(getWebsite(url, false))
+			if err != nil {
+				s.log("error while visiting insecure domain: ", err.Error())
+			}
+
+			s.collector.Wait() // Wait for concurrent scrapes to finish
+		}
+
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return s.emailsSet.toSlice(), fmt.Errorf("scraping canceled: %w", ctx.Err())
+	case <-done:
+		return s.emailsSet.toSlice(), nil
+	}
 }
 
 func getWebsite(url string, secure bool) string {
