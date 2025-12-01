@@ -26,6 +26,11 @@ const (
 	defaultRetryDelay = 1 * time.Second
 	// maxRetryDelay is the maximum delay between retries.
 	maxRetryDelay = 30 * time.Second
+	// randomDelayDivisor is used to calculate random delay as a fraction of rate limit delay.
+	randomDelayDivisor = 2
+	// defaultUserAgent is the default user agent string for HTTP requests.
+	defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+		"(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
 // Scraper config.
@@ -78,45 +83,11 @@ func DefaultConfig() Config {
 
 // New initiates new scraper entity.
 func New(cfg Config) *Scraper {
-	// Initiate colly
 	collector := colly.NewCollector(
-		//nolint:lll // allow long line for user agent
-		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+		colly.UserAgent(defaultUserAgent),
 	)
 
-	collector.Async = cfg.Async
-	collector.MaxDepth = cfg.MaxDepth
-
-	// Set HTTP request timeout
-	collector.SetRequestTimeout(time.Duration(cfg.Timeout) * time.Second)
-
-	// Configure robots.txt behavior
-	if !cfg.RespectRobotsTxt {
-		collector.IgnoreRobotsTxt = true
-	}
-
-	// Configure rate limiting
-	if cfg.RateLimitDelay > 0 || cfg.Parallelism > 0 {
-		parallelism := cfg.Parallelism
-		if parallelism <= 0 {
-			parallelism = defaultParallelism
-		}
-
-		_ = collector.Limit(&colly.LimitRule{
-			DomainGlob:  "*",
-			Parallelism: parallelism,
-			Delay:       cfg.RateLimitDelay,
-			RandomDelay: cfg.RateLimitDelay / 2, //nolint:mnd // half of rate limit for randomization
-		})
-	}
-
-	if cfg.Debug {
-		collector.SetDebugger(&debug.LogDebugger{
-			Output: os.Stderr,
-			Prefix: "",
-			Flag:   log.LstdFlags,
-		})
-	}
+	configureCollector(collector, cfg)
 
 	scraper := &Scraper{
 		cfg:       cfg,
@@ -127,39 +98,117 @@ func New(cfg Config) *Scraper {
 		},
 	}
 
-	// Configure retry with exponential backoff
-	if cfg.MaxRetries > 0 {
-		collector.OnError(func(r *colly.Response, err error) {
-			retriesLeft, ok := r.Ctx.GetAny("retriesLeft").(int)
-			if !ok {
-				retriesLeft = cfg.MaxRetries
-			}
+	scraper.configureRetry()
+	scraper.configureCallbacks()
 
-			if retriesLeft > 0 {
-				attempt := cfg.MaxRetries - retriesLeft + 1
-				delay := cfg.RetryDelay * time.Duration(1<<uint(attempt-1)) //nolint:gosec // attempt is bounded by MaxRetries
-				delay = min(delay, maxRetryDelay)
+	return scraper
+}
 
-				scraper.log("retrying request to", r.Request.URL, "in", delay, "(", retriesLeft, "retries left)")
-				time.Sleep(delay)
+// configureCollector sets up the collector with basic settings.
+func configureCollector(collector *colly.Collector, cfg Config) {
+	collector.Async = cfg.Async
+	collector.MaxDepth = cfg.MaxDepth
+	collector.SetRequestTimeout(time.Duration(cfg.Timeout) * time.Second)
 
-				r.Ctx.Put("retriesLeft", retriesLeft-1)
-				_ = r.Request.Retry()
-			} else {
-				scraper.log("request to", r.Request.URL, "failed after", cfg.MaxRetries, "retries:", err)
-			}
-		})
+	if !cfg.RespectRobotsTxt {
+		collector.IgnoreRobotsTxt = true
+	}
 
-		collector.OnRequest(func(r *colly.Request) {
-			r.Ctx.Put("retriesLeft", cfg.MaxRetries)
+	if cfg.Debug {
+		collector.SetDebugger(&debug.LogDebugger{
+			Output: os.Stderr,
+			Prefix: "",
+			Flag:   log.LstdFlags,
 		})
 	}
 
-	if cfg.EnableJavascript {
-		scraper.collector.OnResponse(func(response *colly.Response) {
-			err := initiateScrapingFromChrome(response, cfg.Timeout)
+	configureRateLimiting(collector, cfg)
+}
+
+// configureRateLimiting sets up rate limiting rules on the collector.
+func configureRateLimiting(collector *colly.Collector, cfg Config) {
+	if cfg.RateLimitDelay <= 0 && cfg.Parallelism <= 0 {
+		return
+	}
+
+	parallelism := cfg.Parallelism
+	if parallelism <= 0 {
+		parallelism = defaultParallelism
+	}
+
+	_ = collector.Limit(&colly.LimitRule{
+		DomainRegexp: "",
+		DomainGlob:   "*",
+		Delay:        cfg.RateLimitDelay,
+		RandomDelay:  cfg.RateLimitDelay / randomDelayDivisor,
+		Parallelism:  parallelism,
+	})
+}
+
+// configureRetry sets up retry with exponential backoff.
+func (s *Scraper) configureRetry() {
+	if s.cfg.MaxRetries <= 0 {
+		return
+	}
+
+	s.collector.OnError(func(response *colly.Response, err error) {
+		s.handleRequestError(response, err)
+	})
+
+	s.collector.OnRequest(func(request *colly.Request) {
+		request.Ctx.Put("retriesLeft", s.cfg.MaxRetries)
+	})
+}
+
+// handleRequestError handles errors during requests and implements retry logic.
+func (s *Scraper) handleRequestError(response *colly.Response, err error) {
+	retriesLeft, ok := response.Ctx.GetAny("retriesLeft").(int)
+	if !ok {
+		retriesLeft = s.cfg.MaxRetries
+	}
+
+	if retriesLeft <= 0 {
+		s.log("request to", response.Request.URL, "failed after", s.cfg.MaxRetries, "retries:", err)
+
+		return
+	}
+
+	delay := s.calculateRetryDelay(retriesLeft)
+
+	s.log("retrying request to", response.Request.URL, "in", delay, "(", retriesLeft, "retries left)")
+	time.Sleep(delay)
+
+	response.Ctx.Put("retriesLeft", retriesLeft-1)
+	_ = response.Request.Retry()
+}
+
+// calculateRetryDelay computes the delay for the current retry attempt using exponential backoff.
+func (s *Scraper) calculateRetryDelay(retriesLeft int) time.Duration {
+	attempt := s.cfg.MaxRetries - retriesLeft + 1
+
+	// Use bounded multiplication to avoid overflow
+	// For typical MaxRetries (1-10), this is safe
+	var multiplier int64 = 1
+
+	for i := 1; i < attempt && i < 32; i++ {
+		multiplier *= 2
+		if multiplier > int64(maxRetryDelay/s.cfg.RetryDelay) {
+			return maxRetryDelay
+		}
+	}
+
+	delay := s.cfg.RetryDelay * time.Duration(multiplier)
+
+	return min(delay, maxRetryDelay)
+}
+
+// configureCallbacks sets up all the collector callbacks for scraping.
+func (s *Scraper) configureCallbacks() {
+	if s.cfg.EnableJavascript {
+		s.collector.OnResponse(func(response *colly.Response) {
+			err := initiateScrapingFromChrome(response, s.cfg.Timeout)
 			if err != nil {
-				scraper.log(err)
+				s.log(err)
 
 				return
 			}
@@ -167,32 +216,34 @@ func New(cfg Config) *Scraper {
 	}
 
 	// Parse emails on each downloaded page
-	scraper.collector.OnScraped(func(response *colly.Response) {
-		scraper.emailsSet.parseEmails(response.Body)
+	s.collector.OnScraped(func(response *colly.Response) {
+		s.emailsSet.parseEmails(response.Body)
 	})
 
 	// Cloudflare encoded email support
-	scraper.collector.OnHTML("span[data-cfemail]", func(el *colly.HTMLElement) {
-		scraper.emailsSet.parseCloudflareEmail(el.Attr("data-cfemail"))
+	s.collector.OnHTML("span[data-cfemail]", func(el *colly.HTMLElement) {
+		s.emailsSet.parseCloudflareEmail(el.Attr("data-cfemail"))
 	})
 
-	if cfg.Recursively {
-		// Find and visit all links
-		scraper.collector.OnHTML("a[href]", func(el *colly.HTMLElement) {
-			scraper.log("visiting: ", el.Attr("href"))
-
-			err := el.Request.Visit(el.Attr("href"))
-			if err != nil {
-				// Ignore already visited error, this appears too often
-				var alreadyVisited *colly.AlreadyVisitedError
-				if !errors.As(err, &alreadyVisited) {
-					scraper.log("error while linking: ", err.Error())
-				}
-			}
-		})
+	if s.cfg.Recursively {
+		s.configureRecursiveCrawling()
 	}
+}
 
-	return scraper
+// configureRecursiveCrawling sets up link following for recursive scraping.
+func (s *Scraper) configureRecursiveCrawling() {
+	s.collector.OnHTML("a[href]", func(el *colly.HTMLElement) {
+		s.log("visiting: ", el.Attr("href"))
+
+		err := el.Request.Visit(el.Attr("href"))
+		if err != nil {
+			// Ignore already visited error, this appears too often
+			var alreadyVisited *colly.AlreadyVisitedError
+			if !errors.As(err, &alreadyVisited) {
+				s.log("error while linking: ", err.Error())
+			}
+		}
+	})
 }
 
 func (s *Scraper) log(v ...any) {

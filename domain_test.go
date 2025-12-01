@@ -1,9 +1,11 @@
+//nolint:testpackage // need access to internal functions
 package emailscraper
 
 import (
 	"testing"
 )
 
+//nolint:funlen // table-driven test with many cases
 func TestPrepareAllowedDomain(t *testing.T) {
 	t.Parallel()
 
@@ -75,23 +77,25 @@ func TestPrepareAllowedDomain(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := prepareAllowedDomain(tt.url)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("prepareAllowedDomain(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
+			got, err := prepareAllowedDomain(testCase.url)
+			if (err != nil) != testCase.wantErr {
+				t.Errorf("prepareAllowedDomain(%q) error = %v, wantErr %v", testCase.url, err, testCase.wantErr)
+
 				return
 			}
 
-			if !tt.wantErr && !equalStringSlices(got, tt.wantDomains) {
-				t.Errorf("prepareAllowedDomain(%q) = %v, want %v", tt.url, got, tt.wantDomains)
+			if !testCase.wantErr && !equalStringSlices(got, testCase.wantDomains) {
+				t.Errorf("prepareAllowedDomain(%q) = %v, want %v", testCase.url, got, testCase.wantDomains)
 			}
 		})
 	}
 }
 
+//nolint:funlen // table-driven test with many cases
 func TestTrimProtocol(t *testing.T) {
 	t.Parallel()
 
@@ -147,24 +151,24 @@ func TestTrimProtocol(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := trimProtocol(tt.url); got != tt.expected {
-				t.Errorf("trimProtocol(%q) = %q, want %q", tt.url, got, tt.expected)
+			if got := trimProtocol(testCase.url); got != testCase.expected {
+				t.Errorf("trimProtocol(%q) = %q, want %q", testCase.url, got, testCase.expected)
 			}
 		})
 	}
 }
 
-func equalStringSlices(a, b []string) bool {
-	if len(a) != len(b) {
+func equalStringSlices(first, second []string) bool {
+	if len(first) != len(second) {
 		return false
 	}
 
-	for i := range a {
-		if a[i] != b[i] {
+	for idx := range first {
+		if first[idx] != second[idx] {
 			return false
 		}
 	}

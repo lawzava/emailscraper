@@ -1,3 +1,4 @@
+//nolint:testpackage // need access to internal functions
 package emailscraper
 
 import (
@@ -30,12 +31,12 @@ func TestIsValidEmail(t *testing.T) {
 		{"valid net TLD", "info@example.net", true},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := isValidEmail(tt.email); got != tt.expected {
-				t.Errorf("isValidEmail(%q) = %v, want %v", tt.email, got, tt.expected)
+			if got := isValidEmail(testCase.email); got != testCase.expected {
+				t.Errorf("isValidEmail(%q) = %v, want %v", testCase.email, got, testCase.expected)
 			}
 		})
 	}
@@ -55,27 +56,28 @@ func TestDecodeCloudflareEmail(t *testing.T) {
 		{"invalid hex in key", "zz", ""},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := decodeCloudflareEmail(tt.encoded); got != tt.expected {
-				t.Errorf("decodeCloudflareEmail(%q) = %q, want %q", tt.encoded, got, tt.expected)
+			if got := decodeCloudflareEmail(testCase.encoded); got != testCase.expected {
+				t.Errorf("decodeCloudflareEmail(%q) = %q, want %q", testCase.encoded, got, testCase.expected)
 			}
 		})
 	}
 }
 
+//nolint:cyclop,funlen // test function with multiple subtests
 func TestParseEmails(t *testing.T) {
 	t.Parallel()
 
 	t.Run("standard email", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("Contact us at test@example.com for info"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("Contact us at test@example.com for info"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 1 {
 			t.Errorf("expected 1 email, got %d", len(result))
 		}
@@ -88,10 +90,10 @@ func TestParseEmails(t *testing.T) {
 	t.Run("multiple emails", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("Contact test@example.com or support@example.org"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("Contact test@example.com or support@example.org"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 2 {
 			t.Errorf("expected 2 emails, got %d", len(result))
 		}
@@ -100,10 +102,10 @@ func TestParseEmails(t *testing.T) {
 	t.Run("obfuscated email with brackets", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("Email: user[AT]domain.com"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("Email: user[AT]domain.com"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 1 {
 			t.Errorf("expected 1 obfuscated email, got %d", len(result))
 		}
@@ -112,10 +114,10 @@ func TestParseEmails(t *testing.T) {
 	t.Run("obfuscated email with parentheses", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("Email: user(at)domain.com"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("Email: user(at)domain.com"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 1 {
 			t.Errorf("expected 1 obfuscated email, got %d", len(result))
 		}
@@ -124,10 +126,10 @@ func TestParseEmails(t *testing.T) {
 	t.Run("obfuscated email with spaces", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("Email: user AT domain.com"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("Email: user AT domain.com"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 1 {
 			t.Errorf("expected 1 obfuscated email, got %d", len(result))
 		}
@@ -136,10 +138,10 @@ func TestParseEmails(t *testing.T) {
 	t.Run("duplicate handling", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("test@example.com and test@example.com and test@example.com"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("test@example.com and test@example.com and test@example.com"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 1 {
 			t.Errorf("expected 1 unique email, got %d", len(result))
 		}
@@ -148,10 +150,10 @@ func TestParseEmails(t *testing.T) {
 	t.Run("no emails in text", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("This is just some regular text without any emails"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("This is just some regular text without any emails"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 0 {
 			t.Errorf("expected 0 emails, got %d", len(result))
 		}
@@ -160,10 +162,10 @@ func TestParseEmails(t *testing.T) {
 	t.Run("invalid email filtered", func(t *testing.T) {
 		t.Parallel()
 
-		e := &emails{}
-		e.parseEmails([]byte("image@file.png and real@example.com"))
+		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet.parseEmails([]byte("image@file.png and real@example.com"))
 
-		result := e.toSlice()
+		result := emailSet.toSlice()
 		if len(result) != 1 {
 			t.Errorf("expected 1 valid email (png filtered), got %d", len(result))
 		}
@@ -173,39 +175,40 @@ func TestParseEmails(t *testing.T) {
 func TestEmailsReset(t *testing.T) {
 	t.Parallel()
 
-	e := &emails{}
-	e.add("test@example.com")
+	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+	emailSet.add("test@example.com")
 
-	if len(e.toSlice()) != 1 {
-		t.Errorf("expected 1 email before reset, got %d", len(e.toSlice()))
+	if len(emailSet.toSlice()) != 1 {
+		t.Errorf("expected 1 email before reset, got %d", len(emailSet.toSlice()))
 	}
 
-	e.reset()
+	emailSet.reset()
 
-	if len(e.toSlice()) != 0 {
-		t.Errorf("expected 0 emails after reset, got %d", len(e.toSlice()))
+	if len(emailSet.toSlice()) != 0 {
+		t.Errorf("expected 0 emails after reset, got %d", len(emailSet.toSlice()))
 	}
 }
 
 func TestEmailsThreadSafety(t *testing.T) {
 	t.Parallel()
 
-	e := &emails{}
+	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
 	done := make(chan bool)
 	numGoroutines := 100
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
-			e.add("test@example.com")
+			emailSet.add("test@example.com")
+
 			done <- true
 		}()
 	}
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		<-done
 	}
 
-	result := e.toSlice()
+	result := emailSet.toSlice()
 	if len(result) != 1 {
 		t.Errorf("expected 1 email after concurrent adds, got %d", len(result))
 	}
@@ -214,10 +217,11 @@ func TestEmailsThreadSafety(t *testing.T) {
 func TestEmailsThreadSafetyMultipleEmails(t *testing.T) {
 	t.Parallel()
 
-	e := &emails{}
-	var wg sync.WaitGroup
+	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
 
-	emails := []string{
+	var waitGroup sync.WaitGroup
+
+	emailAddrs := []string{
 		"test1@example.com",
 		"test2@example.com",
 		"test3@example.com",
@@ -226,46 +230,47 @@ func TestEmailsThreadSafetyMultipleEmails(t *testing.T) {
 	}
 
 	// Add each email 10 times concurrently
-	for _, email := range emails {
-		for i := 0; i < 10; i++ {
-			wg.Add(1)
+	for _, email := range emailAddrs {
+		for range 10 {
+			waitGroup.Add(1)
 
-			go func(em string) {
-				defer wg.Done()
-				e.add(em)
+			go func(addr string) {
+				defer waitGroup.Done()
+
+				emailSet.add(addr)
 			}(email)
 		}
 	}
 
-	wg.Wait()
+	waitGroup.Wait()
 
-	result := e.toSlice()
-	if len(result) != len(emails) {
-		t.Errorf("expected %d unique emails, got %d", len(emails), len(result))
+	result := emailSet.toSlice()
+	if len(result) != len(emailAddrs) {
+		t.Errorf("expected %d unique emails, got %d", len(emailAddrs), len(result))
 	}
 }
 
 func TestEmailsToSlice(t *testing.T) {
 	t.Parallel()
 
-	e := &emails{}
-	e.add("a@example.com")
-	e.add("b@example.com")
-	e.add("c@example.com")
+	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+	emailSet.add("a@example.com")
+	emailSet.add("b@example.com")
+	emailSet.add("c@example.com")
 
-	result := e.toSlice()
+	result := emailSet.toSlice()
 	if len(result) != 3 {
 		t.Errorf("expected 3 emails, got %d", len(result))
 	}
 
 	// Verify all emails are present (order may vary due to map)
-	emailSet := make(map[string]bool)
+	resultSet := make(map[string]bool)
 	for _, email := range result {
-		emailSet[email] = true
+		resultSet[email] = true
 	}
 
 	for _, expected := range []string{"a@example.com", "b@example.com", "c@example.com"} {
-		if !emailSet[expected] {
+		if !resultSet[expected] {
 			t.Errorf("expected email %s not found in result", expected)
 		}
 	}
