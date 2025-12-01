@@ -1,6 +1,7 @@
 package emailscraper_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/lawzava/emailscraper"
@@ -13,8 +14,6 @@ func TestScrape(t *testing.T) {
 	cfg.Debug = true
 	cfg.MaxDepth = 1
 
-	scraper := emailscraper.New(cfg)
-
 	testCases := []struct {
 		name             string
 		url              string
@@ -24,24 +23,19 @@ func TestScrape(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		emails, err := scraper.Scrape(testCase.url)
-		if err != nil {
-			t.Fatal(err)
-		}
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 
-		var contains bool
+			scraper := emailscraper.New(cfg)
 
-		for _, email := range emails {
-			if email == testCase.mustContainEmail {
-				contains = true
-
-				break
+			emails, err := scraper.Scrape(testCase.url)
+			if err != nil {
+				t.Fatalf("Scrape() error: %v", err)
 			}
-		}
 
-		if !contains {
-			t.Error("email missing: ", emails)
-			t.Fail()
-		}
+			if !slices.Contains(emails, testCase.mustContainEmail) {
+				t.Errorf("email %q missing, got: %v", testCase.mustContainEmail, emails)
+			}
+		})
 	}
 }

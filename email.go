@@ -10,9 +10,18 @@ import (
 	"github.com/lawzava/go-tld"
 )
 
+const (
+	// minEmailDomainParts is the minimum number of parts a valid email domain should have (domain.tld).
+	minEmailDomainParts = 2
+	// minTLDLength is the minimum length for a valid TLD.
+	minTLDLength = 2
+	// minCloudflareEmailLength is the minimum length for a valid Cloudflare-encoded email (2 hex chars for XOR key).
+	minCloudflareEmailLength = 2
+)
+
 type emails struct {
-	emails []string
-	m      sync.Mutex
+	set map[string]struct{}
+	m   sync.Mutex
 }
 
 func (s *emails) add(email string) {
@@ -20,24 +29,41 @@ func (s *emails) add(email string) {
 		return
 	}
 
-	// check for already existing emails
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for _, existingEmail := range s.emails {
-		if existingEmail == email {
-			return
-		}
+	if s.set == nil {
+		s.set = make(map[string]struct{})
 	}
 
-	s.emails = append(s.emails, email)
+	s.set[email] = struct{}{}
+}
+
+func (s *emails) toSlice() []string {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	result := make([]string, 0, len(s.set))
+	for email := range s.set {
+		result = append(result, email)
+	}
+
+	return result
+}
+
+func (s *emails) reset() {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.set = nil
 }
 
 // Initialize once.
 var (
 	reg = regexp.MustCompile(`([a-zA-Z0-9._-]+@([a-zA-Z0-9_-]+\.)+[a-zA-Z0-9_-]+)`)
 
-	obfuscatedSeparators = regexp.MustCompile(`.(AT|at|ETA).`)
+	// Matches common obfuscation patterns: [AT], (at), {AT}, " AT ", etc.
+	obfuscatedSeparators = regexp.MustCompile(`\s*[\[\(\{]?\s*[aA][tT]\s*[\]\)\}]?\s*`)
 )
 
 // Parse any *@*.* string and append to the slice.
@@ -64,15 +90,27 @@ func (s *emails) parseCloudflareEmail(cloudflareEncodedEmail string) {
 }
 
 func decodeCloudflareEmail(email string) string {
+	// Need at least 2 characters for the XOR key
+	if len(email) < minCloudflareEmailLength {
+		return ""
+	}
+
 	var buffer bytes.Buffer
 
-	r, _ := strconv.ParseInt(email[0:2], 16, 0)
+	xorKey, err := strconv.ParseInt(email[0:2], 16, 0)
+	if err != nil {
+		return ""
+	}
 
 	for n := 4; n < len(email)+2; n += 2 {
-		i, _ := strconv.ParseInt(email[n-2:n], 16, 0)
-		c := i ^ r
+		charCode, err := strconv.ParseInt(email[n-2:n], 16, 0)
+		if err != nil {
+			continue
+		}
 
-		buffer.WriteRune(rune(c))
+		decodedChar := charCode ^ xorKey
+
+		buffer.WriteRune(rune(decodedChar))
 	}
 
 	return buffer.String()
@@ -86,15 +124,13 @@ func isValidEmail(email string) bool {
 
 	split := strings.Split(email, ".")
 
-	//nolint:gomnd // allow magic number here
-	if len(split) < 2 {
+	if len(split) < minEmailDomainParts {
 		return false
 	}
 
 	ending := split[len(split)-1]
 
-	//nolint:gomnd // allow magic number here
-	if len(ending) < 2 {
+	if len(ending) < minTLDLength {
 		return false
 	}
 
@@ -103,9 +139,7 @@ func isValidEmail(email string) bool {
 		return false
 	}
 
-	if _, err := strconv.Atoi(ending); err == nil {
-		return false
-	}
+	_, err := strconv.Atoi(ending)
 
-	return true
+	return err != nil
 }
