@@ -74,7 +74,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("standard email", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("Contact us at test@example.com for info"))
 
 		result := emailSet.toSlice()
@@ -90,7 +90,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("multiple emails", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("Contact test@example.com or support@example.org"))
 
 		result := emailSet.toSlice()
@@ -102,7 +102,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("obfuscated email with brackets", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("Email: user[AT]domain.com"))
 
 		result := emailSet.toSlice()
@@ -114,7 +114,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("obfuscated email with parentheses", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("Email: user(at)domain.com"))
 
 		result := emailSet.toSlice()
@@ -126,7 +126,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("obfuscated email with spaces", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("Email: user AT domain.com"))
 
 		result := emailSet.toSlice()
@@ -138,7 +138,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("duplicate handling", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("test@example.com and test@example.com and test@example.com"))
 
 		result := emailSet.toSlice()
@@ -150,7 +150,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("no emails in text", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("This is just some regular text without any emails"))
 
 		result := emailSet.toSlice()
@@ -162,7 +162,7 @@ func TestParseEmails(t *testing.T) {
 	t.Run("invalid email filtered", func(t *testing.T) {
 		t.Parallel()
 
-		emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+		emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 		emailSet.parseEmails([]byte("image@file.png and real@example.com"))
 
 		result := emailSet.toSlice()
@@ -175,7 +175,7 @@ func TestParseEmails(t *testing.T) {
 func TestEmailsReset(t *testing.T) {
 	t.Parallel()
 
-	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+	emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 	emailSet.add("test@example.com")
 
 	if len(emailSet.toSlice()) != 1 {
@@ -192,7 +192,7 @@ func TestEmailsReset(t *testing.T) {
 func TestEmailsThreadSafety(t *testing.T) {
 	t.Parallel()
 
-	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+	emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 	done := make(chan bool)
 	numGoroutines := 100
 
@@ -217,7 +217,7 @@ func TestEmailsThreadSafety(t *testing.T) {
 func TestEmailsThreadSafetyMultipleEmails(t *testing.T) {
 	t.Parallel()
 
-	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+	emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 
 	var waitGroup sync.WaitGroup
 
@@ -253,7 +253,7 @@ func TestEmailsThreadSafetyMultipleEmails(t *testing.T) {
 func TestEmailsToSlice(t *testing.T) {
 	t.Parallel()
 
-	emailSet := &emails{} //nolint:exhaustruct // zero value is valid
+	emailSet := &emails{} //nolint:exhaustruct,exhaustruct_v5 // zero value is valid
 	emailSet.add("a@example.com")
 	emailSet.add("b@example.com")
 	emailSet.add("c@example.com")

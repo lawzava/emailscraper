@@ -21,6 +21,11 @@ linters:
     nakedret:
       max-func-lines: 2
   exclusions:
+    # Test tables repeat literal inputs on purpose.
+    rules:
+      - path: _test\.go
+        linters:
+          - goconst
     generated: lax
     presets:
       - comments

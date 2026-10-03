@@ -97,18 +97,19 @@ func decodeCloudflareEmail(email string) string {
 
 	var buffer bytes.Buffer
 
-	xorKey, err := strconv.ParseInt(email[0:2], 16, 0)
+	// Each field is two hex digits, so bitSize 8 bounds every value to a byte.
+	xorKey, err := strconv.ParseUint(email[0:2], 16, 8)
 	if err != nil {
 		return ""
 	}
 
 	for n := 4; n < len(email)+2; n += 2 {
-		charCode, err := strconv.ParseInt(email[n-2:n], 16, 0)
+		charCode, err := strconv.ParseUint(email[n-2:n], 16, 8)
 		if err != nil {
 			continue
 		}
 
-		decodedChar := charCode ^ xorKey
+		decodedChar := byte(charCode) ^ byte(xorKey)
 
 		buffer.WriteRune(rune(decodedChar))
 	}
