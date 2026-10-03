@@ -238,8 +238,7 @@ func (s *Scraper) configureRecursiveCrawling() {
 		err := el.Request.Visit(el.Attr("href"))
 		if err != nil {
 			// Ignore already visited error, this appears too often
-			var alreadyVisited *colly.AlreadyVisitedError
-			if !errors.As(err, &alreadyVisited) {
+			if _, ok := errors.AsType[*colly.AlreadyVisitedError](err); !ok {
 				s.log("error while linking: ", err.Error())
 			}
 		}
